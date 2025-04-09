@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-
-################################################################################
-## Form generated from reading UI file 'form.ui'
-##
-## Created by: Qt User Interface Compiler version 6.8.1
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt,Signal)
@@ -17,17 +7,60 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
     QMainWindow, QPushButton, QSizePolicy, QSlider,
-    QVBoxLayout, QWidget, QFileDialog)
+    QVBoxLayout, QWidget, QFileDialog, QGraphicsView, QGraphicsScene, QPlainTextEdit)
+from PySide6.QtMultimedia import QMediaPlayer, QMediaCaptureSession, QCamera
+from PySide6.QtMultimediaWidgets import QVideoWidget
+import os, logging
+from media_player import *
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename="box.log",level=logging.INFO)
+
+class QLogger(logging.Handler):
+    def __init__(self, parent):
+        super().__init__()
+        self.widget = QPlainTextEdit(parent)
+        self.widget.setReadOnly(True)
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.widget.appendPlainText(msg)
 
 class QClickableLabel(QLabel):
     clicked = Signal()
     
     def mousePressEvent(self, ev):
         self.clicked.emit()
-        
+
+class QVideoPlayer(QWidget):
+        def __init__(self, parent = None):
+                super(QVideoPlayer,self).__init__(parent)
+                
+                self.videoWidget = QVideoWidget(parent)
+                
+                self.mediaPlayer = QMediaPlayer()
+                self.mediaPlayer.setVideoOutput(self.videoWidget)
+                
+                self.camera = QCamera()
+                
+                self.cameraSession = QMediaCaptureSession()
+                self.cameraSession.setCamera(self.camera)
+                self.cameraSession.setVideoOutput(self.videoWidget)
+                
+
+        def show(self, source):
+                if source == "Webcam":
+                        logging.info("Opening camera....")
+                        self.mediaPlayer.stop()
+                        self.camera.start()
+                        
+                elif source == "Arquivo de vídeo":
+                        self.camera.stop()
+                        self.mediaPlayer.play()
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
+            
         ##### SET FONTS
         fontInter12 = QFont()
         fontInter12.setFamilies([u"Inter"])
@@ -44,11 +77,14 @@ class Ui_MainWindow(object):
         closeIcon = QIcon()
         closeIcon.addFile(u"assets/imgs/close.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         
+        playIcon = QIcon()
+        playIcon.addFile(u"assets/imgs/mdi_play-pause.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        
         ##### MAIN WINDOWS SETTINGS
         
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(920, 540)
+        MainWindow.resize(920, 600)
         
         MainWindow.setFont(fontInter12)
         MainWindow.setStyleSheet(u"* {\n"
@@ -115,11 +151,10 @@ class Ui_MainWindow(object):
         
         self.saveButton.setFont(fontInter12)
         self.saveButton.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.saveButton.setStyleSheet(u"background-color: #BAD266; \n"
-"color: #000;\n"
-"border-radius: 12px;")
+        
         self.saveButton.setIcon(icon)
         self.saveButton.setIconSize(QSize(24, 24))
+        self.saveButton.setStyleSheet("background-color: #bad266; color: black")
         
         self.closeButton = QPushButton(self.centralwidget)
         self.closeButton.setObjectName(u"closeButton")
@@ -130,38 +165,63 @@ class Ui_MainWindow(object):
         self.closeButton.setSizePolicy(sizePolicy)
         self.closeButton.setFont(fontInter12)
         self.closeButton.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.closeButton.setStyleSheet(u"background-color: #3f3f3f; \n"
-"color: #fff;\n"
-"border-radius: 12px;")
+    
         
         self.closeButton.setIcon(closeIcon)
         self.closeButton.setIconSize(QSize(24, 24))
         
-        ##### IMAGE DISPLAY
-        self.imageDisplay = QLabel(self.centralwidget)
-        self.imageDisplay.setObjectName(u"imageDisplay")
-        self.imageDisplay.setGeometry(QRect(360, 60, 528, 297))
+          
+        self.execButton = QPushButton(self.centralwidget)
+        self.execButton.setObjectName(u"execButton")
+        self.execButton.setGeometry(QRect(760, 47, 121, 28))
         
-        sizePolicy.setHeightForWidth(self.imageDisplay.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(self.execButton.sizePolicy().hasHeightForWidth())
+        self.execButton.setSizePolicy(sizePolicy)
         
-        self.imageDisplay.setSizePolicy(sizePolicy)
-        self.imageDisplay.setStyleSheet(u"background: #3d3d3d;\n"
-"border: 2px solid white;\n"
-"border-radius: 12px;")
-        self.imageDisplay.setPixmap(QPixmap(u"assets/imgs/image.png"))
-        self.imageDisplay.setScaledContents(False)
-        self.imageDisplay.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.execButton.setFont(fontInter12)
+        self.execButton.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         
-        self.logBox = QLabel(self.centralwidget)
-        self.logBox.setObjectName(u"logBox")
-        self.logBox.setGeometry(QRect(360, 390, 528, 120))
+        self.execButton.setIcon(playIcon)
+        self.execButton.setIconSize(QSize(24, 24))
+        self.execButton.setCheckable(True)
+        self.execButton.setStyleSheet("background-color: #bad266; color: black")
         
-        sizePolicy.setHeightForWidth(self.logBox.sizePolicy().hasHeightForWidth())
+        ##### MEDIA DISPLAY
         
-        self.logBox.setSizePolicy(sizePolicy)
-        self.logBox.setStyleSheet(u"background: #3d3d3d;\n"
-"border: 2px solid white;\n"
-"border-radius: 12px;")
+        self.sourceDropdown = QComboBox(self.centralwidget)
+        self.sourceDropdown.setGeometry(QRect(600, 47, 150, 30))
+        
+        self.sourceDropdown.addItem("")
+        self.sourceDropdown.addItem("")
+        
+        self.sourceDropdown.setObjectName(u"sourceDropdown")
+        
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        
+        sizePolicy2.setHeightForWidth(self.sourceDropdown.sizePolicy().hasHeightForWidth())
+        
+        self.sourceDropdown.setSizePolicy(sizePolicy2)
+        self.sourceDropdown.setFixedHeight(30)
+        self.sourceDropdown.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.sourceDropdown.setStyleSheet(u"color: white;\n"
+"border: 2px solid #fff; \n"
+"padding: 5px;\n"
+"background: #1d1d1d;")
+
+        self.videoDisplay = QVideoPlayer(self.centralwidget)
+        self.videoDisplay.setObjectName(u"videoDisplay")
+        self.videoDisplay.videoWidget.setGeometry(QRect(346, 100, 557, 313))
+        
+        self.logBox = QLogger(self.centralwidget)
+        self.logBox.widget.setGeometry(QRect(346, 450, 557, 120))
+        self.logBox.widget.setStyleSheet(u"color: white;\n"
+"border: 2px solid #fff; \n"
+"padding: 5px;\n"
+"background: #1d1d1d;")
+        self.logBox.setFormatter(logging.Formatter('%(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(self.logBox)
+        logging.getLogger().setLevel(logging.INFO)
+
         
         ##### SIDE MENU 
         self.widget = QWidget(self.centralwidget)
@@ -186,8 +246,9 @@ class Ui_MainWindow(object):
         
         self.brightnessSlider = QSlider(self.widget)
         self.brightnessSlider.setObjectName(u"brightnessSlider")
-        self.brightnessSlider.setStyleSheet(u"background: #BAD266;\n"
-"border: 2px solid white;")
+        self.brightnessSlider.setStyleSheet(u"background: white;\n"
+"border: 2px solid white;\n"
+)
         self.brightnessSlider.setOrientation(Qt.Orientation.Horizontal)
         self.brightnessSlider.setTickPosition(QSlider.TickPosition.NoTicks)
 
@@ -232,7 +293,7 @@ class Ui_MainWindow(object):
         
         self.constrastSlider = QSlider(self.widget)
         self.constrastSlider.setObjectName(u"constrastSlider")
-        self.constrastSlider.setStyleSheet(u"background: #BAD266;\n"
+        self.constrastSlider.setStyleSheet(u"background: white;\n"
 "border: 2px solid white;")
         self.constrastSlider.setOrientation(Qt.Orientation.Horizontal)
 
@@ -277,7 +338,7 @@ class Ui_MainWindow(object):
         
         self.saturationSlider = QSlider(self.widget)
         self.saturationSlider.setObjectName(u"saturationSlider")
-        self.saturationSlider.setStyleSheet(u"background: #BAD266;\n"
+        self.saturationSlider.setStyleSheet(u"background: white;\n"
 "border: 2px solid white;")
         self.saturationSlider.setOrientation(Qt.Orientation.Horizontal)
 
@@ -319,31 +380,27 @@ class Ui_MainWindow(object):
         ### MODEL SETTINGS
         self.widget1 = QWidget(self.centralwidget)
         self.widget1.setObjectName(u"widget1")
-        self.widget1.setGeometry(QRect(30, 150, 291, 57))
+        self.widget1.setGeometry(QRect(30, 150, 291, 60))
         
         self.netSize = QVBoxLayout(self.widget1)
         self.netSize.setSpacing(7)
         self.netSize.setObjectName(u"netSize")
         self.netSize.setContentsMargins(0, 0, 0, 0)
         
-        self.Tamanhodarede = QLabel(self.widget1)
-        self.Tamanhodarede.setObjectName(u"Tamanhodarede")
+        self.Modelo = QLabel(self.widget1)
+        self.Modelo.setObjectName(u"Modelo")
         
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHeightForWidth(self.Tamanhodarede.sizePolicy().hasHeightForWidth())
+        sizePolicy1.setHeightForWidth(self.Modelo.sizePolicy().hasHeightForWidth())
         
-        self.Tamanhodarede.setSizePolicy(sizePolicy1)
-        self.Tamanhodarede.setMaximumSize(QSize(16777215, 28))
-        self.Tamanhodarede.setFont(fontInter12)
+        self.Modelo.setSizePolicy(sizePolicy1)
+        self.Modelo.setMaximumSize(QSize(16777215, 28))
+        self.Modelo.setFont(fontInter12)
 
-        self.netSize.addWidget(self.Tamanhodarede)
+        self.netSize.addWidget(self.Modelo)
 
         self.netSizeDropdown = QComboBox(self.widget1)
         
-        self.netSizeDropdown.addItem("")
-        self.netSizeDropdown.addItem("")
-        self.netSizeDropdown.addItem("")
-        self.netSizeDropdown.addItem("")
         self.netSizeDropdown.addItem("")
         
         self.netSizeDropdown.setObjectName(u"netSizeDropdown")
@@ -355,11 +412,10 @@ class Ui_MainWindow(object):
         self.netSizeDropdown.setSizePolicy(sizePolicy2)
         self.netSizeDropdown.setFixedHeight(30)
         self.netSizeDropdown.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.netSizeDropdown.setStyleSheet(u"color: #000;\n"
+        self.netSizeDropdown.setStyleSheet(u"color: white;\n"
 "border: 2px solid #fff; \n"
 "padding: 5px;\n"
-"border-radius: 12px;\n"
-"background: #bad266;")
+"background: #1d1d1d;")
 
         self.netSize.addWidget(self.netSizeDropdown, 0, Qt.AlignmentFlag.AlignTop)
         
@@ -390,20 +446,17 @@ class Ui_MainWindow(object):
         
         self.browser.setSizePolicy(sizePolicy3)
 
-        self.browser.setMinimumHeight(28)
-        self.browser.setStyleSheet(u"color: #000;\n"
+        self.browser.setMaximumHeight(30)
+        self.browser.setStyleSheet(u""
 "border: 2px solid #fff; \n"
-"padding: 5px;\n"
-"border-radius: 12px;\n"
-"background: #bad266;")
+"padding: 5px;\n")
         self.browser.setWordWrap(True)
         
         self.dialog = QFileDialog(self)
-        self.dialog.setFileMode(QFileDialog.AnyFile)
-        self.dialog.setNameFilter(u"Images (*.png *.jpg)")
+        self.dialog.setFileMode(QFileDialog.FileMode.Directory)
 
         self.fileBrowser.addWidget(self.browser)
-
+    
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
@@ -411,6 +464,9 @@ class Ui_MainWindow(object):
         ##### SIGNALS AND SLOTS
         self.closeButton.clicked.connect(MainWindow.close)
         self.browser.clicked.connect(MainWindow.openFile)
+        self.execButton.pressed.connect(MainWindow.runModel)
+        #self.execButton.clicked[bool].connect(self.videoDisplay.play)
+        self.sourceDropdown.textActivated[str].connect(self.videoDisplay.show)
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
@@ -420,32 +476,17 @@ class Ui_MainWindow(object):
         self.title.setText(QCoreApplication.translate("MainWindow", u"Pose", None))
         self.saveButton.setText(QCoreApplication.translate("MainWindow", u"Salvar", None))
         self.closeButton.setText(QCoreApplication.translate("MainWindow", u"Fechar", None))
-        self.logBox.setText(QCoreApplication.translate("MainWindow", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Ubuntu Sans'; font-size:11pt; font-weight:400; font-style:normal;\">\n"
-"<ul style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">\n"
-"<li>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</li>\n"
-"<li>Integer rutrum nisi vestibulum, feugiat magna vel, gravida sem.</li>\n"
-"<li>Vivamus ac velit placerat, dapibus nunc ut, ornare libero.</li>\n"
-"<li>Pellentesque mattis purus eget enim lacinia, ut dapibus tellus faucibus.</li>\n"
-"<li>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</li>\n"
-"<li>Integer rutrum "
-                        "nisi vestibulum, feugiat magna vel, gravida sem.</li>\n"
-"</ul></body></html>", None))
+        self.execButton.setText(QCoreApplication.translate("MainWindow", u"Executar", None))
+        self.execButton.setEnabled(True)
         self.Opcoesdaimagem.setText(QCoreApplication.translate("MainWindow", u"Op\u00e7\u00f5es da imagem", None))
         self.Brilho.setText(QCoreApplication.translate("MainWindow", u"Brilho", None))
         self.Constraste.setText(QCoreApplication.translate("MainWindow", u"Contraste", None))
         self.Saturacao.setText(QCoreApplication.translate("MainWindow", u"Satura\u00e7\u00e3o", None))
-        self.Tamanhodarede.setText(QCoreApplication.translate("MainWindow", u"Tamanho da rede", None))
-        self.netSizeDropdown.setItemText(0, QCoreApplication.translate("MainWindow", u"Nano - YOLOv8n", None))
-        self.netSizeDropdown.setItemText(1, QCoreApplication.translate("MainWindow", u"Small - YOLOv8s", None))
-        self.netSizeDropdown.setItemText(2, QCoreApplication.translate("MainWindow", u"Medium - YOLOv8m", None))
-        self.netSizeDropdown.setItemText(3, QCoreApplication.translate("MainWindow", u"Large - YOLOv8l", None))
-        self.netSizeDropdown.setItemText(4, QCoreApplication.translate("MainWindow", u"Extra Large - YOLOv8xl", None))
-
+        self.Modelo.setText(QCoreApplication.translate("MainWindow", u"Modelo", None))
+        self.netSizeDropdown.setItemText(0, QCoreApplication.translate("MainWindow", u"Ballnet Pose v1", None))
+        self.videoDisplay.videoWidget.show()
+        self.sourceDropdown.setCurrentText(QCoreApplication.translate("MainWindow", u"Webcam", None))
+        self.sourceDropdown.setItemText(0, QCoreApplication.translate("MainWindow", u"Webcam", None))
+        self.sourceDropdown.setItemText(1, QCoreApplication.translate("MainWindow", u"Arquivo de vídeo", None))
         self.netSizeDropdown.setCurrentText(QCoreApplication.translate("MainWindow", u"Large - YOLOv8l", None))
         self.Pesquisar.setText(QCoreApplication.translate("MainWindow", u"Pesquisar", None))
